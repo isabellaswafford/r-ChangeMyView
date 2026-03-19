@@ -1,0 +1,1148 @@
+
+#####reddit persuasion cleaned
+###study 1
+
+#libraries
+library(tidyverse)
+library(lme4)   #logistic regression
+library(randomForest)  #predictive modeling
+library(topicmodels)  #topic modeling
+library(tidytext)  #text analysis
+library(sjPlot)
+library(psych)
+library(dplyr)
+library(knitr)
+library(kableExtra)
+options(scipen = 999) #turn off scientific notation
+
+#setwd
+setwd("~/Downloads")
+#load reddit data
+reddit <- read.csv("reddit_all.csv")
+
+#make delta awarded a factor
+reddit$Delta_Awarded <- as.factor(reddit$Delta_Awarded)
+str(reddit$Delta_Awarded)
+
+##nested model
+
+#make sure the grouping variables are factors
+reddit$Post_parent_id <- as.factor(reddit$Post_parent_id)
+reddit$id <- as.factor(reddit$id)
+
+#logistic mixed-effects model
+s1_logit_mixed <- glmer(
+  Delta_Awarded ~ 
+    affect + posemo + negemo + anx + anger + sad + Tone +  #emotionality
+    insight + cause + discrep + tentat + certain + differ + cogproc + Authentic + Clout + #cognition
+    Analytic + WC + WPS +                          #analytic
+    (1 | Post_parent_id) + (1 | id),                   #random intercepts
+  data = reddit,
+  family = binomial,
+  control = glmerControl(optimizer = "bobyqa") # helps convergence
+)
+
+summary(s1_logit_mixed)
+
+#dataframe with updated logistic mixed model results
+s1_logit_results <- data.frame(
+  Predictor = c("Intercept",
+                "Affect", "Positive Emotion", "Negative Emotion", "Anxiety", "Anger", "Sadness",
+                "Tone",
+                "Insight", "Cause", "Discrepancy", "Tentative", "Certainty", "Differentiation",
+                "Cognitive Processing", "Authentic", "Clout",
+                "Analytic", "LCM", "Word Count", "Words per Sentence"),
+  Estimate = c(-1.129,
+               0.06774, -0.08502, -0.05850, 0.07474, -0.05267, 0.03271,
+               0.0005403,
+               0.00005379, -0.02597, -0.02729, 0.01951, -0.01181, 0.008709,
+               0.01378, -0.003271, -0.0004638,
+               0.006147, 0.01191, 0.003550, 0.009816),
+  SE = c(0.2783,
+         0.06868, 0.07096, 0.07171, 0.03698, 0.02386, 0.03656,
+         0.001459,
+         0.01702, 0.01744, 0.01468, 0.01394, 0.02010, 0.01514,
+         0.01451, 0.001137, 0.001259,
+         0.001113, 0.09340, 0.0001667, 0.002745)
+)
+
+#compute 95% CIs and significance
+s1_logit_results <- s1_logit_results %>%
+  mutate(
+    Lower = Estimate - 1.96 * SE,
+    Upper = Estimate + 1.96 * SE,
+    z = Estimate / SE,
+    Significance = ifelse(abs(z) > 1.96, "Significant", "Not Significant")
+  )
+
+s1_logit_results
+
+
+
+s1 <- tab_model(
+  s1_logit_mixed,
+  show.est = FALSE,         #don’t show raw estimates (optional)
+  show.ci = 0.95,           #show 95% CI
+  show.p = TRUE,            #show p-values
+  show.se = TRUE,           #show standard errors
+  show.std = TRUE,          #standardized coefficients
+  std.response = TRUE,      #standardize the response variable
+  string.pred = "Fixed Effects",
+  string.std = "Beta",
+  string.std_ci = "95% CI",
+  string.std_se = "SE",
+  p.style = "numeric",
+  p.threshold = 0.001,
+  show.obs = FALSE,         #don’t show N
+  show.ngroups = FALSE,     #don’t show group counts
+  show.icc = FALSE,         #don’t show ICC
+  show.r2 = FALSE           #don’t show R²
+)
+
+s1
+
+
+###################################################################
+###study 2
+
+
+#readcsv
+dat <- read.csv("~/Desktop/liwc_cmv_balanced.csv")
+#View(dat)
+
+#make delta awarded a factor
+dat$delta_awarded <- as.factor(dat$delta_awarded)
+str(dat$delta_awarded)
+
+##nested model
+#make sure the grouping variables are factors
+dat$parent_id <- as.factor(dat$parent_id)
+dat$id <- as.factor(dat$id)
+
+
+#logistic mixed-effects model
+s2_logit_mixed <- glmer(
+  delta_awarded ~ 
+    Affect + emo_pos + emo_neg + emo_anx + emo_anger + emo_sad + Tone +
+    insight + cause + discrep + tentat + certitude + differ +
+    cogproc + Authentic + Clout +
+    Analytic + WC + WPS +
+    (1 | parent_id) + (1 | id),    
+  data = dat,
+  family = binomial,
+  control = glmerControl(optimizer = "bobyqa")
+)
+
+
+summary(s2_logit_mixed)
+
+
+
+s2 <- tab_model(
+  s2_logit_mixed,
+  show.est = FALSE,         #don’t show raw estimates (optional)
+  show.ci = 0.95,           #show 95% CI
+  show.p = TRUE,            #show p-values
+  show.se = TRUE,           #show standard errors
+  show.std = TRUE,          #standardized coefficients
+  std.response = TRUE,      #standardize the response variable
+  string.pred = "Fixed Effects",
+  string.std = "Beta",
+  string.std_ci = "95% CI",
+  string.std_se = "SE",
+  p.style = "numeric",
+  p.threshold = 0.001,
+  show.obs = FALSE,         #don’t show N
+  show.ngroups = FALSE,     #don’t show group counts
+  show.icc = FALSE,         #don’t show ICC
+  show.r2 = FALSE           #don’t show R²
+)
+
+s2
+
+
+
+
+
+library(dplyr)
+
+s2_logit_results <- data.frame(
+  Predictor = c("Intercept",
+                "Affect","Positive Emotion","Negative Emotion","Anxiety","Anger","Sadness",
+                "Tone",
+                "Insight","Cause","Discrepancy","Tentative","Certitude","Differentiation",
+                "Cognitive Processing","Authentic","Clout",
+                "Analytic","Word Count","Words per Sentence"),
+  Estimate = c(-0.9368,
+               -0.03812, 0.007079, 0.01921, 0.006234, -0.03123, -0.003709,
+               -0.0003769,
+               -0.06855, -0.05423, -0.05467, -0.01795, -0.04852, -0.03611,
+               0.06583, -0.002663, 0.00007381,
+               0.005345, 0.004996, 0.009131),
+  SE = c(0.08354,
+         0.004448, 0.01175, 0.01518, 0.03116, 0.02040, 0.03535,
+         0.0004738,
+         0.008115, 0.008656, 0.009205, 0.006777, 0.01146, 0.007829,
+         0.006963, 0.0005319, 0.0004823,
+         0.0005416, 0.0001099, 0.001514)
+)
+
+s2_logit_results <- s2_logit_results %>%
+  mutate(
+    Lower = Estimate - 1.96 * SE,
+    Upper = Estimate + 1.96 * SE,
+    z = Estimate / SE,
+    Significance = ifelse(abs(z) > 1.96, "Significant", "Not Significant")
+  )
+
+s2_logit_results
+
+
+
+
+################################################################################
+#multicollinearity, descriptives, z scores
+
+#multicollinearity
+
+
+library(performance)
+check_collinearity(s1_logit_mixed) 
+check_collinearity(s2_logit_mixed)
+
+#descriptives
+
+#study 1
+
+#get all LIWC predictors used in your model
+liwc_vars_s1 <- c("affect", "anx", "anger", "sad", "Tone",
+                  "insight", "cause", "discrep", "tentat", "certain", "differ",
+                  "cogproc", "Authentic", "Clout", "Analytic", "WC", "WPS")
+
+#descriptive statistics for each LIWC variable
+descriptives_s1 <- reddit %>%
+  select(all_of(liwc_vars_s1)) %>%
+  psych::describe() %>%
+  as.data.frame() %>%
+  select(mean, sd, median, min, max, skew, kurtosis, n)
+
+#add delta counts
+delta_counts_s1 <- reddit %>%
+  count(Delta_Awarded) %>%
+  mutate(prop = n / sum(n))
+
+descriptives_s1
+delta_counts_s1
+
+
+#more descriptives
+library(dplyr)
+library(psych)
+library(knitr)
+library(kableExtra)
+
+#study 1
+#define predictor names
+liwc_vars_s1 <- c("affect", "anx", "anger", "sad", "Tone",
+                  "insight", "cause", "discrep", "tentat", "certain", "differ",
+                  "cogproc", "Authentic", "Clout", "Analytic", "WC", "WPS")
+
+#outcome frequencies
+outcome_s1 <- reddit %>%
+  count(Delta_Awarded) %>%
+  mutate(prop = round(n / sum(n), 3))
+
+kable(outcome_s1, caption = "Study 1: Outcome Frequencies (Delta_Awarded)") %>%
+  kable_styling(full_width = FALSE, position = "center")
+
+#descriptive stats
+desc_s1 <- reddit %>%
+  select(all_of(liwc_vars_s1)) %>%
+  psych::describe() %>%
+  as.data.frame() %>%
+  select(mean, sd, min, max, n) %>%
+  round(3)
+
+kable(desc_s1, caption = "Study 1: Descriptive Statistics for LIWC Predictors") %>%
+  kable_styling(full_width = FALSE, position = "center")
+
+#correlations among predictors
+corr_s1 <- reddit %>%
+  select(all_of(liwc_vars_s1)) %>%
+  cor(use = "pairwise.complete.obs") %>%
+  round(2)
+
+kable(corr_s1, caption = "Study 1: Correlation Matrix of LIWC Predictors") %>%
+  kable_styling(font_size = 10, full_width = FALSE, position = "center")
+
+
+
+
+#study 2
+
+liwc_vars_s2 <- c("Affect","emo_anx","emo_anger","emo_sad",
+                  "Tone","insight","cause","discrep","tentat","certitude","differ",
+                  "cogproc","Authentic","Clout","Analytic","WC","WPS")
+
+descriptives_s2 <- dat %>%
+  select(all_of(liwc_vars_s2)) %>%
+  psych::describe() %>%
+  as.data.frame() %>%
+  select(mean, sd, median, min, max, skew, kurtosis, n)
+
+delta_counts_s2 <- dat %>%
+  count(delta_awarded) %>%
+  mutate(prop = n / sum(n))
+
+descriptives_s2
+delta_counts_s2
+
+
+#study 2
+liwc_vars_s2 <- c("Affect","emo_anx","emo_anger","emo_sad",
+                  "Tone","insight","cause","discrep","tentat","certitude","differ",
+                  "cogproc","Authentic","Clout","Analytic","WC","WPS")
+
+#outcome frequencies
+outcome_s2 <- dat %>%
+  count(delta_awarded) %>%
+  mutate(prop = round(n / sum(n), 3))
+
+kable(outcome_s2, caption = "Study 2: Outcome Frequencies (delta_awarded)") %>%
+  kable_styling(full_width = FALSE, position = "center")
+
+#descriptive stats
+desc_s2 <- dat %>%
+  select(all_of(liwc_vars_s2)) %>%
+  psych::describe() %>%
+  as.data.frame() %>%
+  select(mean, sd, min, max, n) %>%
+  round(3)
+
+kable(desc_s2, caption = "Study 2: Descriptive Statistics for LIWC Predictors") %>%
+  kable_styling(full_width = FALSE, position = "center")
+
+
+#correlations among predictors
+corr_s2 <- dat %>%
+  select(all_of(liwc_vars_s2)) %>%
+  cor(use = "pairwise.complete.obs") %>%
+  round(2)
+
+kable(corr_s2, caption = "Study 2: Correlation Matrix of LIWC Predictors") %>%
+  kable_styling(font_size = 10, full_width = FALSE, position = "center")
+
+
+
+
+
+
+
+
+#z scores
+
+#study 1
+
+s1_logit_mixed <- glmer(
+  Delta_Awarded ~ 
+    scale(affect) + scale(posemo) + scale(negemo) + scale(anx) + scale(anger) + scale(sad) + scale(Tone) +
+    scale(insight) + scale(cause) + scale(discrep) + scale(tentat) + scale(certain) + scale(differ) +
+    scale(cogproc) + scale(Authentic) + scale(Clout) +
+    scale(Analytic) + scale(WC) + scale(WPS) +
+    (1 | Post_parent_id) + (1 | id),
+  data = reddit,
+  family = binomial,
+  control = glmerControl(optimizer = "bobyqa")
+)
+
+summary(s1_logit_mixed)
+
+
+#odds ratios
+s1_or <- summary(s1_logit_mixed)$coefficients %>%
+  as.data.frame() %>%
+  rownames_to_column("Predictor") %>%
+  mutate(
+    OR = exp(Estimate),
+    Lower_CI = exp(Estimate - 1.96 * `Std. Error`),
+    Upper_CI = exp(Estimate + 1.96 * `Std. Error`)
+  ) %>%
+  select(Predictor, Estimate, `Std. Error`, OR, Lower_CI, Upper_CI, `Pr(>|z|)`)
+
+s1_or
+
+#pretty tables
+kable(
+  s1_or %>%
+    mutate(across(c(Estimate, `Std. Error`, OR, Lower_CI, Upper_CI, `Pr(>|z|)`),
+                  ~ round(., 3))),
+  caption = "Study 1: Odds Ratios from z-scored logistic mixed-effects model"
+)
+
+
+s1_scaled <- tab_model(
+  s1_logit_mixed,
+  show.est = FALSE,         #don’t show raw estimates (optional)
+  show.ci = 0.95,           #show 95% CI
+  show.p = TRUE,            #show p-values
+  show.se = TRUE,           #show standard errors
+  show.std = TRUE,          #standardized coefficients
+  std.response = TRUE,      #standardize the response variable
+  string.pred = "Fixed Effects",
+  string.std = "Beta",
+  string.std_ci = "95% CI",
+  string.std_se = "SE",
+  p.style = "numeric",
+  p.threshold = 0.001,
+  show.obs = FALSE,         #don’t show N
+  show.ngroups = FALSE,     #don’t show group counts
+  show.icc = FALSE,         #don’t show ICC
+  show.r2 = FALSE           #don’t show R²
+)
+
+s1_scaled
+
+
+
+
+
+#study 2
+s2_logit_mixed <- glmer(
+  delta_awarded ~ 
+    scale(Affect) + scale(emo_pos) + scale(emo_neg) + scale(emo_anx) + scale(emo_anger) + scale(emo_sad) + scale(Tone) +
+    scale(insight) + scale(cause) + scale(discrep) + scale(tentat) + scale(certitude) + scale(differ) +
+    scale(cogproc) + scale(Authentic) + scale(Clout) +
+    scale(Analytic) + scale(WC) + scale(WPS) +
+    (1 | parent_id) + (1 | id),
+  data = dat,
+  family = binomial,
+  control = glmerControl(optimizer = "bobyqa")
+)
+
+summary(s2_logit_mixed)
+
+
+#odds ratios
+s2_or <- summary(s2_logit_mixed)$coefficients %>%
+  as.data.frame() %>%
+  rownames_to_column("Predictor") %>%
+  mutate(
+    OR = exp(Estimate),
+    Lower_CI = exp(Estimate - 1.96 * `Std. Error`),
+    Upper_CI = exp(Estimate + 1.96 * `Std. Error`)
+  ) %>%
+  select(Predictor, Estimate, `Std. Error`, OR, Lower_CI, Upper_CI, `Pr(>|z|)`)
+
+s2_or
+
+#pretty tables
+kable(
+  s2_or %>%
+    mutate(across(c(Estimate, `Std. Error`, OR, Lower_CI, Upper_CI, `Pr(>|z|)`),
+                  ~ round(., 3))),
+  caption = "Study 2: Odds Ratios from z-scored logistic mixed-effects model"
+)
+
+
+
+s2_scaled <- tab_model(
+  s2_logit_mixed,
+  show.est = FALSE,         #don’t show raw estimates (optional)
+  show.ci = 0.95,           #show 95% CI
+  show.p = TRUE,            #show p-values
+  show.se = TRUE,           #show standard errors
+  show.std = TRUE,          #standardized coefficients
+  std.response = TRUE,      #standardize the response variable
+  string.pred = "Fixed Effects",
+  string.std = "Beta",
+  string.std_ci = "95% CI",
+  string.std_se = "SE",
+  p.style = "numeric",
+  p.threshold = 0.001,
+  show.obs = FALSE,         #don’t show N
+  show.ngroups = FALSE,     #don’t show group counts
+  show.icc = FALSE,         #don’t show ICC
+  show.r2 = FALSE           #don’t show R²
+)
+
+s2_scaled
+
+
+
+
+
+
+
+#study 1
+corr_s1_outcome <- reddit %>%
+  mutate(Delta_Awarded = as.numeric(as.character(Delta_Awarded))) %>%
+  select(Delta_Awarded, all_of(liwc_vars_s1)) %>%
+  cor(use = "pairwise.complete.obs") %>%
+  round(2)
+
+kable(corr_s1_outcome, caption = "Study 1: Correlations with Outcome (Delta_Awarded)") %>%
+  kable_styling(font_size = 10, full_width = FALSE, position = "center")
+
+#study 2
+corr_s2_outcome <- dat %>%
+  mutate(delta_awarded = as.numeric(as.character(delta_awarded))) %>%
+  select(delta_awarded, all_of(liwc_vars_s2)) %>%
+  cor(use = "pairwise.complete.obs") %>%
+  round(2)
+
+kable(corr_s2_outcome, caption = "Study 2: Correlations with Outcome (delta_awarded)") %>%
+  kable_styling(font_size = 10, full_width = FALSE, position = "center")
+
+
+
+
+
+
+
+
+
+#removing positive and negative emotion (VIF > 5) ----------------------------------
+
+
+#removing positive and negative emotion
+
+
+#####reddit persuasion cleaned
+###study 1
+
+#libraries
+library(tidyverse)
+library(lme4)   #logistic regression
+library(randomForest)  #predictive modeling
+library(topicmodels)  #topic modeling
+library(tidytext)  #text analysis
+library(sjPlot)
+options(scipen = 999) #turn off scientific notation
+
+#setwd
+setwd("~/Downloads")
+#load reddit data
+reddit <- read.csv("reddit_all.csv")
+
+#make delta awarded a factor
+reddit$Delta_Awarded <- as.factor(reddit$Delta_Awarded)
+str(reddit$Delta_Awarded)
+
+##nested model
+
+#make sure the grouping variables are factors
+reddit$Post_parent_id <- as.factor(reddit$Post_parent_id)
+reddit$id <- as.factor(reddit$id)
+
+#logistic mixed-effects model
+s1_logit_mixed <- glmer(
+  Delta_Awarded ~ 
+    affect + anx + anger + sad + Tone +  #emotionality
+    insight + cause + discrep + tentat + certain + differ + cogproc + Authentic + Clout + #cognition
+    Analytic + WC + WPS +                          #analytic
+    (1 | Post_parent_id) + (1 | id),                   #random intercepts
+  data = reddit,
+  family = binomial,
+  control = glmerControl(optimizer = "bobyqa") #helps convergence
+)
+
+summary(s1_logit_mixed)
+
+s1_logit_results <- data.frame(
+  Predictor = c("Intercept",
+                "Affect", "Anxiety", "Anger", "Sadness",
+                "Tone",
+                "Insight", "Cause", "Discrepancy", "Tentative", "Certainty", "Differentiation",
+                "Cognitive Processing", "Authentic", "Clout",
+                "Analytic", "Word Count", "Words per Sentence"),
+  
+  Estimate = c(-1.0740390,
+               -0.0042230, 0.0832382, -0.0472500, 0.0401092,
+               -0.0005088,
+               0.0008637, -0.0260896, -0.0279949, 0.0192100, -0.0128186, 0.0088977,
+               0.0142085, -0.0033134, -0.0004218,
+               0.0061459, 0.0035480, 0.0098775),
+  
+  SE = c(0.1844541,
+         0.0096217, 0.0359911, 0.0211623, 0.0351121,
+         0.0009437,
+         0.0170246, 0.0173381, 0.0146143, 0.0139217, 0.0200558, 0.0151324,
+         0.0144401, 0.0011364, 0.0012540,
+         0.0011131, 0.0001666, 0.0027464)
+)
+
+
+#compute 95% CIs and significance
+s1_logit_results <- s1_logit_results %>%
+  mutate(
+    Lower = Estimate - 1.96 * SE,
+    Upper = Estimate + 1.96 * SE,
+    z = Estimate / SE,
+    Significance = ifelse(abs(z) > 1.96, "Significant", "Not Significant")
+  )
+
+s1_logit_results
+
+
+
+s1 <- tab_model(
+  s1_logit_mixed,
+  show.est = FALSE,         #don’t show raw estimates (optional)
+  show.ci = 0.95,           #show 95% CI
+  show.p = TRUE,            #show p-values
+  show.se = TRUE,           #show standard errors
+  show.std = TRUE,          #standardized coefficients
+  std.response = TRUE,      #standardize the response variable
+  string.pred = "Fixed Effects",
+  string.std = "Beta",
+  string.std_ci = "95% CI",
+  string.std_se = "SE",
+  p.style = "numeric",
+  p.threshold = 0.001,
+  show.obs = FALSE,         #don’t show N
+  show.ngroups = FALSE,     #don’t show group counts
+  show.icc = FALSE,         #don’t show ICC
+  show.r2 = FALSE           #don’t show R²
+)
+
+s1
+
+
+###################################################################
+###study 2
+
+
+#readcsv
+dat <- read.csv("~/Desktop/liwc_cmv_balanced.csv")
+#View(dat)
+
+#make delta awarded a factor
+dat$delta_awarded <- as.factor(dat$delta_awarded)
+str(dat$delta_awarded)
+
+##nested model
+#make sure the grouping variables are factors
+dat$parent_id <- as.factor(dat$parent_id)
+dat$id <- as.factor(dat$id)
+
+
+#logistic mixed-effects model
+s2_logit_mixed <- glmer(
+  delta_awarded ~ 
+    Affect + emo_anx + emo_anger + emo_sad + Tone +
+    insight + cause + discrep + tentat + certitude + differ +
+    cogproc + Authentic + Clout +
+    Analytic + WC + WPS +
+    (1 | parent_id) + (1 | id),    
+  data = dat,
+  family = binomial,
+  control = glmerControl(optimizer = "bobyqa")
+)
+
+
+summary(s2_logit_mixed)
+
+
+
+s2 <- tab_model(
+  s2_logit_mixed,
+  show.est = FALSE,         #don’t show raw estimates (optional)
+  show.ci = 0.95,           #show 95% CI
+  show.p = TRUE,            #show p-values
+  show.se = TRUE,           #show standard errors
+  show.std = TRUE,          #standardized coefficients
+  std.response = TRUE,      #standardize the response variable
+  string.pred = "Fixed Effects",
+  string.std = "Beta",
+  string.std_ci = "95% CI",
+  string.std_se = "SE",
+  p.style = "numeric",
+  p.threshold = 0.001,
+  show.obs = FALSE,         #don’t show N
+  show.ngroups = FALSE,     #don’t show group counts
+  show.icc = FALSE,         #don’t show ICC
+  show.r2 = FALSE           #don’t show R²
+)
+
+s2
+
+
+
+
+
+library(dplyr)
+
+s2_logit_results <- data.frame(
+  Predictor = c("Intercept",
+                "Affect", "Anxiety", "Anger", "Sadness",
+                "Tone",
+                "Insight", "Cause", "Discrepancy", "Tentative", "Certainty",
+                "Differentiation",
+                "Cognitive Processing", "Authentic", "Clout",
+                "Analytic", "Word Count", "Words per Sentence"),
+  
+  Estimate = c(-0.92723262,
+               -0.03560611, 0.02147094, -0.01607069, 0.01195010,
+               -0.00045755,
+               -0.06494183, -0.05056432, -0.05091952, -0.01508548, -0.04586685,
+               -0.03311317,
+               0.06231943, -0.00268519, 0.00003149,
+               0.00529670, 0.00498832, 0.00892463),
+  
+  SE = c(0.08317169,
+         0.00405653, 0.02806472, 0.01525773, 0.03263179,
+         0.00044226,
+         0.00808982, 0.00862956, 0.00916874, 0.00675820, 0.01143150,
+         0.00780799,
+         0.00694167, 0.00053058, 0.00048115,
+         0.00053958, 0.00010959, 0.00150965)
+)
+
+
+s2_logit_results <- s2_logit_results %>%
+  mutate(
+    Lower = Estimate - 1.96 * SE,
+    Upper = Estimate + 1.96 * SE,
+    z = Estimate / SE,
+    Significance = ifelse(abs(z) > 1.96, "Significant", "Not Significant")
+  )
+
+s2_logit_results
+
+
+
+
+################################################################################
+#multicollinearity, descriptives, z scores
+
+#multicollinearity
+
+
+library(performance)
+check_collinearity(s1_logit_mixed) 
+
+
+#descriptives
+
+#study 1
+
+# Get all LIWC predictors used in your model
+liwc_vars_s1 <- c("affect", "anx", "anger", "sad", "Tone",
+                  "insight", "cause", "discrep", "tentat", "certain", "differ",
+                  "cogproc", "Authentic", "Clout", "Analytic", "WC", "WPS")
+
+#descriptive statistics for each LIWC variable
+descriptives_s1 <- reddit %>%
+  select(all_of(liwc_vars_s1)) %>%
+  psych::describe() %>%
+  as.data.frame() %>%
+  select(mean, sd, median, min, max, skew, kurtosis, n)
+
+#add delta counts
+delta_counts_s1 <- reddit %>%
+  count(Delta_Awarded) %>%
+  mutate(prop = n / sum(n))
+
+descriptives_s1
+delta_counts_s1
+
+
+#more descriptives
+library(dplyr)
+library(psych)
+library(knitr)
+library(kableExtra)
+
+#study 1
+# --- define your predictor names
+liwc_vars_s1 <- c("affect", "anx", "anger", "sad", "Tone",
+                  "insight", "cause", "discrep", "tentat", "certain", "differ",
+                  "cogproc", "Authentic", "Clout", "Analytic", "WC", "WPS")
+
+#outcome frequencies
+outcome_s1 <- reddit %>%
+  count(Delta_Awarded) %>%
+  mutate(prop = round(n / sum(n), 3))
+
+kable(outcome_s1, caption = "Study 1: Outcome Frequencies (Delta_Awarded)") %>%
+  kable_styling(full_width = FALSE, position = "center")
+
+#descriptive stats
+desc_s1 <- reddit %>%
+  select(all_of(liwc_vars_s1)) %>%
+  psych::describe() %>%
+  as.data.frame() %>%
+  select(mean, sd, min, max) %>%
+  round(3)
+
+kable(desc_s1, caption = "Study 1: Descriptive Statistics for LIWC Predictors") %>%
+  kable_styling(full_width = FALSE, position = "center")
+
+#correlations among predictors
+corr_s1 <- reddit %>%
+  select(all_of(liwc_vars_s1)) %>%
+  cor(use = "pairwise.complete.obs") %>%
+  round(2)
+
+kable(corr_s1, caption = "Study 1: Correlation Matrix of LIWC Predictors") %>%
+  kable_styling(font_size = 10, full_width = FALSE, position = "center")
+
+
+
+
+#study 2
+
+liwc_vars_s2 <- c("Affect","emo_anx","emo_anger","emo_sad",
+                  "Tone","insight","cause","discrep","tentat","certitude","differ",
+                  "cogproc","Authentic","Clout","Analytic","WC","WPS")
+
+descriptives_s2 <- dat %>%
+  select(all_of(liwc_vars_s2)) %>%
+  psych::describe() %>%
+  as.data.frame() %>%
+  select(mean, sd, median, min, max, skew, kurtosis, n)
+
+delta_counts_s2 <- dat %>%
+  count(delta_awarded) %>%
+  mutate(prop = n / sum(n))
+
+descriptives_s2
+delta_counts_s2
+
+
+#study 2
+liwc_vars_s2 <- c("Affect","emo_anx","emo_anger","emo_sad",
+                  "Tone","insight","cause","discrep","tentat","certitude","differ",
+                  "cogproc","Authentic","Clout","Analytic","WC","WPS")
+
+#outcome frequencies
+outcome_s2 <- dat %>%
+  count(delta_awarded) %>%
+  mutate(prop = round(n / sum(n), 3))
+
+kable(outcome_s2, caption = "Study 2: Outcome Frequencies (delta_awarded)") %>%
+  kable_styling(full_width = FALSE, position = "center")
+
+#descriptive stats
+desc_s2 <- dat %>%
+  select(all_of(liwc_vars_s2)) %>%
+  psych::describe() %>%
+  as.data.frame() %>%
+  select(mean, sd, min, max) %>%
+  round(3)
+
+kable(desc_s2, caption = "Study 2: Descriptive Statistics for LIWC Predictors") %>%
+  kable_styling(full_width = FALSE, position = "center")
+
+
+#correlations among predictors
+corr_s2 <- dat %>%
+  select(all_of(liwc_vars_s2)) %>%
+  cor(use = "pairwise.complete.obs") %>%
+  round(2)
+
+kable(corr_s2, caption = "Study 2: Correlation Matrix of LIWC Predictors") %>%
+  kable_styling(font_size = 10, full_width = FALSE, position = "center")
+
+
+#study 1 descriptives
+corr_s1_outcome <- reddit %>%
+  mutate(Delta_Awarded = as.numeric(as.character(Delta_Awarded))) %>%
+  select(Delta_Awarded, all_of(liwc_vars_s1)) %>%
+  cor(use = "pairwise.complete.obs") %>%
+  round(2)
+
+kable(corr_s1_outcome, caption = "Study 1: Correlations with Outcome (Delta_Awarded)") %>%
+  kable_styling(font_size = 10, full_width = FALSE, position = "center")
+
+#study 2
+corr_s2_outcome <- dat %>%
+  mutate(delta_awarded = as.numeric(as.character(delta_awarded))) %>%
+  select(delta_awarded, all_of(liwc_vars_s2)) %>%
+  cor(use = "pairwise.complete.obs") %>%
+  round(2)
+
+kable(corr_s2_outcome, caption = "Study 2: Correlations with Outcome (delta_awarded)") %>%
+  kable_styling(font_size = 10, full_width = FALSE, position = "center")
+
+
+
+#correlation matrix for s1
+library(dplyr)
+library(knitr)
+library(kableExtra)
+
+#compute correlation matrix
+vars_s1 <- reddit %>%
+  mutate(Delta_Awarded = as.numeric(as.character(Delta_Awarded))) %>%
+  select(Delta_Awarded, all_of(liwc_vars_s1))
+
+cor_mat <- cor(vars_s1, use = "pairwise.complete.obs")
+
+#function to compute p-value matrix
+cor_pmat <- function(x) {
+  mat <- matrix(NA, ncol = ncol(x), nrow = ncol(x))
+  colnames(mat) <- rownames(mat) <- colnames(x)
+  
+  for (i in 1:ncol(x)) {
+    for (j in 1:ncol(x)) {
+      if (i == j) {
+        mat[i, j] <- 0
+      } else {
+        mat[i, j] <- cor.test(x[, i], x[, j])$p.value
+      }
+    }
+  }
+  mat
+}
+
+p_mat <- cor_pmat(vars_s1)
+
+#add significance stars
+cor_stars <- ifelse(p_mat < .001, "***",
+                    ifelse(p_mat < .01, "**",
+                           ifelse(p_mat < .05, "*", "")))
+
+#combine correlations + stars
+cor_formatted <- matrix(
+  paste0(round(cor_mat, 2), cor_stars),
+  nrow = nrow(cor_mat)
+)
+
+colnames(cor_formatted) <- colnames(cor_mat)
+rownames(cor_formatted) <- rownames(cor_mat)
+
+#keep lower triangle
+cor_formatted_upper_na <- cor_formatted
+cor_formatted_upper_na[upper.tri(cor_formatted_upper_na)] <- ""
+
+#print table
+kable(cor_formatted_upper_na,
+      caption = "Study 1: Correlation Matrix",
+      align = "c") %>%
+  kable_styling(font_size = 10, full_width = FALSE, position = "center")
+
+
+
+#compute correlation matrix for Study 2
+vars_s2 <- dat %>%
+  mutate(delta_awarded = as.numeric(as.character(delta_awarded))) %>%
+  select(delta_awarded, all_of(liwc_vars_s2))
+
+cor_mat_s2 <- cor(vars_s2, use = "pairwise.complete.obs")
+
+#function to compute p-value matrix
+cor_pmat <- function(x) {
+  mat <- matrix(NA, ncol = ncol(x), nrow = ncol(x))
+  colnames(mat) <- rownames(mat) <- colnames(x)
+  
+  for (i in 1:ncol(x)) {
+    for (j in 1:ncol(x)) {
+      if (i == j) {
+        mat[i, j] <- 0
+      } else {
+        mat[i, j] <- cor.test(x[, i], x[, j])$p.value
+      }
+    }
+  }
+  mat
+}
+
+p_mat_s2 <- cor_pmat(vars_s2)
+
+#add significance stars
+cor_stars_s2 <- ifelse(p_mat_s2 < .001, "***",
+                       ifelse(p_mat_s2 < .01, "**",
+                              ifelse(p_mat_s2 < .05, "*", "")))
+
+#combine correlations and stars
+cor_formatted_s2 <- matrix(
+  paste0(round(cor_mat_s2, 2), cor_stars_s2),
+  nrow = nrow(cor_mat_s2)
+)
+
+colnames(cor_formatted_s2) <- colnames(cor_mat_s2)
+rownames(cor_formatted_s2) <- rownames(cor_mat_s2)
+
+#upper triangle blank (APA style)
+cor_formatted_s2_upper_na <- cor_formatted_s2
+cor_formatted_s2_upper_na[upper.tri(cor_formatted_s2_upper_na)] <- ""
+
+#print APA-style table
+kable(cor_formatted_s2_upper_na,
+      caption = "Study 2: Correlation Matrix",
+      align = "c") %>%
+  kable_styling(font_size = 10, full_width = FALSE, position = "center")
+
+
+
+
+
+
+#z scores
+
+#study 1
+
+s1_logit_mixed <- glmer(
+  Delta_Awarded ~ 
+    scale(affect) + scale(anx) + scale(anger) + scale(sad) + scale(Tone) +
+    scale(insight) + scale(cause) + scale(discrep) + scale(tentat) + scale(certain) + scale(differ) +
+    scale(cogproc) + scale(Authentic) + scale(Clout) +
+    scale(Analytic) + scale(WC) + scale(WPS) +
+    (1 | Post_parent_id) + (1 | id),
+  data = reddit,
+  family = binomial,
+  control = glmerControl(optimizer = "bobyqa")
+)
+
+summary(s1_logit_mixed)
+
+
+#odds ratios
+s1_or <- summary(s1_logit_mixed)$coefficients %>%
+  as.data.frame() %>%
+  rownames_to_column("Predictor") %>%
+  mutate(
+    OR = exp(Estimate),
+    Lower_CI = exp(Estimate - 1.96 * `Std. Error`),
+    Upper_CI = exp(Estimate + 1.96 * `Std. Error`)
+  ) %>%
+  select(Predictor, Estimate, `Std. Error`, OR, Lower_CI, Upper_CI, `Pr(>|z|)`)
+
+s1_or
+
+
+
+#pretty tables
+kable(
+  s1_or %>%
+    mutate(across(c(Estimate, `Std. Error`, OR, Lower_CI, Upper_CI, `Pr(>|z|)`),
+                  ~ round(., 3))),
+  caption = "Study 1: Odds Ratios from z-scored logistic mixed-effects model"
+)
+
+
+s1_scaled <- tab_model(
+  s1_logit_mixed,
+  show.est = FALSE,         #don’t show raw estimates (optional)
+  show.ci = 0.95,           #show 95% CI
+  show.p = TRUE,            #show p-values
+  show.se = TRUE,           #show standard errors
+  show.std = TRUE,          #standardized coefficients
+  std.response = TRUE,      #standardize the response variable
+  string.pred = "Fixed Effects",
+  string.std = "Beta",
+  string.std_ci = "95% CI",
+  string.std_se = "SE",
+  p.style = "numeric",
+  p.threshold = 0.001,
+  show.obs = FALSE,         #don’t show N
+  show.ngroups = FALSE,     #don’t show group counts
+  show.icc = FALSE,         #don’t show ICC
+  show.r2 = FALSE           #don’t show R²
+)
+
+s1_scaled
+
+
+
+
+
+#study 2
+s2_logit_mixed <- glmer(
+  delta_awarded ~ 
+    scale(Affect) + scale(emo_anx) + scale(emo_anger) + scale(emo_sad) + scale(Tone) +
+    scale(insight) + scale(cause) + scale(discrep) + scale(tentat) + scale(certitude) + scale(differ) +
+    scale(cogproc) + scale(Authentic) + scale(Clout) +
+    scale(Analytic) + scale(WC) + scale(WPS) +
+    (1 | parent_id) + (1 | id),
+  data = dat,
+  family = binomial,
+  control = glmerControl(optimizer = "bobyqa")
+)
+
+summary(s2_logit_mixed)
+
+
+#odds ratios
+s2_or <- summary(s2_logit_mixed)$coefficients %>%
+  as.data.frame() %>%
+  rownames_to_column("Predictor") %>%
+  mutate(
+    OR = exp(Estimate),
+    Lower_CI = exp(Estimate - 1.96 * `Std. Error`),
+    Upper_CI = exp(Estimate + 1.96 * `Std. Error`)
+  ) %>%
+  select(Predictor, Estimate, `Std. Error`, OR, Lower_CI, Upper_CI, `Pr(>|z|)`)
+
+s2_or
+
+#pretty tables
+kable(
+  s2_or %>%
+    mutate(across(c(Estimate, `Std. Error`, OR, Lower_CI, Upper_CI, `Pr(>|z|)`),
+                  ~ round(., 3))),
+  caption = "Study 2: Odds Ratios from z-scored logistic mixed-effects model"
+)
+
+
+
+s2_scaled <- tab_model(
+  s2_logit_mixed,
+  show.est = FALSE,         #don’t show raw estimates (optional)
+  show.ci = 0.95,           #show 95% CI
+  show.p = TRUE,            #show p-values
+  show.se = TRUE,           #show standard errors
+  show.std = TRUE,          #standardized coefficients
+  std.response = TRUE,      #standardize the response variable
+  string.pred = "Fixed Effects",
+  string.std = "Beta",
+  string.std_ci = "95% CI",
+  string.std_se = "SE",
+  p.style = "numeric",
+  p.threshold = 0.001,
+  show.obs = FALSE,         #don’t show N
+  show.ngroups = FALSE,     #don’t show group counts
+  show.icc = FALSE,         #don’t show ICC
+  show.r2 = FALSE           #don’t show R²
+)
+
+s2_scaled
+
+
+
+
+
+
+#####getting number of parent posts from study 1 and 2
+
+#study1
+length(unique(reddit$Post_parent_id))
+
+#study 2
+length(unique(dat$parent_id))
+
+dat %>% 
+  summarize(n_parent_posts = n_distinct(parent_id))
+
+
+dat %>%
+  count(parent_id, name = "n_comments") %>%
+  arrange(desc(n_comments))
+
+
+dat %>%
+  count(parent_id) %>%
+  psych::describe()
+
+
+
+
+
+
+
+
+
+
+
+
